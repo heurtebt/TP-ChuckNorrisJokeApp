@@ -7,16 +7,16 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 
 class JokeApiServiceFactory {
-    fun jas(): JokeApiService=
-        Retrofit.Builder().baseUrl("https://api.chucknorris.io/jokes/")
-            .addConverterFactory(
-                Json.asConverterFactory(
-                    MediaType.get("application/json")
-                )
+    fun createService(): JokeApiService= Retrofit.Builder()
+        .baseUrl("https://api.chucknorris.io/")
+        .addConverterFactory(
+            Json.asConverterFactory(
+                MediaType.get("application/json")
             )
-            .addCallAdapterFactory(
-                RxJava2CallAdapterFactory.create()
-            )
-            .build()
-            .create(JokeApiService::class.java)
+        )
+        .addCallAdapterFactory(
+            RxJava2CallAdapterFactory.create()
+        )
+        .build()
+        .create(JokeApiService::class.java)
 }
