@@ -1,6 +1,9 @@
 package com.example.chucknorrisjokeapp
-import kotlinx.serialization.*
-import kotlinx.serialization.json.*
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+
+
 @Serializable
 data class Joke(val categories:List<String>,
                 @SerialName("created_at")val createdAt:String,
