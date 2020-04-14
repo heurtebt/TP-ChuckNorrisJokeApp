@@ -22,7 +22,7 @@ class JokeView @JvmOverloads constructor (context : Context,
         save(model.saved)
         share.setOnClickListener { model.onShareButtonClickListener(model.joke.value) }
         save.setOnClickListener {
-            model.onSaveButtonClickListener(model.joke.id)
+            model.onSaveButtonClickListener(model.joke,!model.saved)
             setupView(model.copy(saved=!model.saved))
         }
     }
@@ -34,6 +34,6 @@ class JokeView @JvmOverloads constructor (context : Context,
 
     data class Model(val joke : Joke,
                      val onShareButtonClickListener: (value:String)->Unit={},
-                     val onSaveButtonClickListener: (id:String)->Unit={},
+                     val onSaveButtonClickListener: (joke:Joke,saved:Boolean)->Unit={_,_->},
                      val saved : Boolean)
 }
