@@ -37,12 +37,14 @@ class MainActivity : AppCompatActivity() {
         val jokeService = JokeApiServiceFactory().createService()
         val jokeSingle : Single<Joke> = jokeService.giveMeAJoke()
         fun getAJoke() {
+            progressBar.visibility=View.VISIBLE
             compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeBy(
                     onError = { e -> Log.wtf("Request failed", e) },
                     onSuccess = { joke: Joke ->
                         viewAdapter.addJoke(joke)
+                        progressBar.visibility=View.GONE
                     }
                 )
             )
