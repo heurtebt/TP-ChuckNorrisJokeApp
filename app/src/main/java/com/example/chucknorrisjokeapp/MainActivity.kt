@@ -1,5 +1,6 @@
 package com.example.chucknorrisjokeapp
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -12,7 +13,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
-import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.activity_main.progressBar
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import kotlinx.serialization.list
@@ -34,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         viewManager = LinearLayoutManager(this)
         viewAdapter = JokeAdapter(
             {getJokes()},
-            {id->onShareButtonClick(id)},
+            {value->onShareButtonClick(value)},
             {id->onSaveButtonClick(id)}
         )
 
@@ -72,8 +73,14 @@ class MainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    private fun onShareButtonClick(id:String){
-        Log.wtf("share",id)
+    private fun onShareButtonClick(value:String){
+        val sendIntent: Intent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, "Look at this joke ! : "+value)
+            type = "text/plain"
+        }
+        val shareIntent = Intent.createChooser(sendIntent, null)
+        startActivity(shareIntent)
     }
 
     private fun onSaveButtonClick(id:String){

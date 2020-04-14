@@ -2,11 +2,11 @@ package com.example.chucknorrisjokeapp
 
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import java.util.*
+import java.util.Collections
 
 class JokeAdapter(
     private val onBottomReached : () -> Unit = {},
-    private val onShareButtonClickListener : (id : String) -> Unit = {},
+    private val onShareButtonClickListener : (value : String) -> Unit = {},
     private val onSaveButtonClickListener : (id : String) -> Unit = {}
 ) :RecyclerView.Adapter<JokeAdapter.JokeViewHolder>()
 {
