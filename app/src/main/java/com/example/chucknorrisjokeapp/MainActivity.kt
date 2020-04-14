@@ -25,9 +25,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         viewManager = LinearLayoutManager(this)
-        viewAdapter = JokeAdapter{getAJoke()}
+        viewAdapter = JokeAdapter{getJokes()}
 
-        getAJoke()
+        getJokes()
 
         recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
             setHasFixedSize(true)
@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getAJoke() {
+    private fun getJokes() {
         val jokeService = JokeApiServiceFactory().createService()
         val jokeSingle : Single<Joke> = jokeService.giveMeAJoke()
         compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
