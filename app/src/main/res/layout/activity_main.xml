@@ -18,7 +18,7 @@
         android:layout_width="75dp"
         android:layout_height="75dp"
         android:layout_marginBottom="16dp"
-        android:indeterminateTint="#F15A24"
+        android:indeterminateTint="@color/colorAccent"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/myRecyclerView"
         app:layout_constraintEnd_toEndOf="@+id/myRecyclerView"

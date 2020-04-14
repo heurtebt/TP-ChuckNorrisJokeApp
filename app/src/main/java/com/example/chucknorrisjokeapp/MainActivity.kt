@@ -17,9 +17,11 @@ import kotlinx.serialization.json.JsonConfiguration
 import kotlinx.serialization.list
 
 class MainActivity : AppCompatActivity() {
+
     private lateinit var recyclerView: RecyclerView
     private lateinit var viewAdapter: JokeAdapter
     private lateinit var viewManager: RecyclerView.LayoutManager
+
     private val jokeService = JokeApiServiceFactory().createService()
     private val compDisp: CompositeDisposable = CompositeDisposable()
     private val jokes : MutableList<Joke> = mutableListOf()
@@ -29,7 +31,18 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         viewManager = LinearLayoutManager(this)
-        viewAdapter = JokeAdapter{getJokes()}
+        viewAdapter = JokeAdapter(
+            {getJokes()},
+            {id->onShareButtonClick(id)},
+            {id->onSaveButtonClick(id)}
+        )
+
+        recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
+            setHasFixedSize(true)
+
+            layoutManager = viewManager
+            adapter = viewAdapter
+        }
 
         if (savedInstanceState != null) {
             savedInstanceState.getString("jokes")
@@ -39,13 +52,6 @@ class MainActivity : AppCompatActivity() {
                     viewAdapter.addJokes(jokes)
                 }
         }else{getJokes()}
-
-        recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
-            setHasFixedSize(true)
-
-            layoutManager = viewManager
-            adapter = viewAdapter
-        }
     }
 
     override fun onStop(){
@@ -56,6 +62,14 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,jokes))
         super.onSaveInstanceState(outState)
+    }
+
+    private fun onShareButtonClick(id:String){
+        Log.wtf("share",id)
+    }
+
+    private fun onSaveButtonClick(id:String){
+        Log.wtf("save",id)
     }
 
     private fun getJokes() {
