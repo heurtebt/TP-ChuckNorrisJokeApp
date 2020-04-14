@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
     private val compDisp: CompositeDisposable = CompositeDisposable()
 
     private val jokes : MutableList<Joke> = mutableListOf()
-    private val savedJokes : MutableList<Joke> = mutableListOf()
+    private val savedJokes : MutableList<Boolean> = mutableListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,13 +51,13 @@ class MainActivity : AppCompatActivity() {
 
         val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
         if(sharedPreferences.contains("savedJokes")) {
-                sharedPreferences.getString("savedJokes","")
-                    ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
-                    ?.let {
-                        savedJokes.clear()
-                        savedJokes.addAll(it)
-                        viewAdapter.addJokes(savedJokes,true)
-                    }
+            sharedPreferences.getString("savedJokes","")
+                ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
+                ?.let {
+                    jokes.addAll(it)
+                    it.forEach { _ -> savedJokes.add(true) }
+                    viewAdapter.addJokes(jokes,savedJokes)
+                }
         }
 
         if (savedInstanceState != null) {
@@ -65,8 +65,8 @@ class MainActivity : AppCompatActivity() {
                 ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
                 ?.let {
                     jokes.addAll(it)
-                    viewAdapter.addJokes(jokes)
-                    jokes.clear()
+                    it.forEach{_->savedJokes.add(false)}
+                    viewAdapter.addJokes(jokes,savedJokes)
                 }
         }else{getJokes()}
 
@@ -83,7 +83,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,viewAdapter.getJokes()))
+        jokes.clear()
+        jokes.addAll(viewAdapter.getJokes())
+        savedJokes.clear()
+        savedJokes.addAll(viewAdapter.getSaved())
+        outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,
+            jokes.filterIndexed { index, _ -> !savedJokes[index] }))
         super.onSaveInstanceState(outState)
     }
 
@@ -98,17 +103,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onSaveButtonClick(joke:Joke,saved : Boolean){
+        jokes.clear()
+        jokes.addAll(viewAdapter.getJokes())
+        savedJokes.clear()
+        savedJokes.addAll(viewAdapter.getSaved())
         val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
-        if(saved) savedJokes.add(joke)
-        else savedJokes.remove(joke)
+        savedJokes[jokes.indexOf(joke)]=saved
         sharedPreferences.edit()
             .putString("savedJokes",
                 Json(JsonConfiguration.Stable)
-                    .stringify(Joke.serializer().list,savedJokes))
+                    .stringify(Joke.serializer().list,
+                        jokes.filterIndexed { index, _ -> savedJokes[index] }))
             .apply()
+        viewAdapter.addJokes(jokes,savedJokes)
     }
 
     private fun getJokes() {
+        jokes.clear()
+        jokes.addAll(viewAdapter.getJokes())
+        savedJokes.clear()
+        savedJokes.addAll(viewAdapter.getSaved())
         val jokeSingle : Single<Joke> = jokeService.giveMeAJoke()
         compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
@@ -117,10 +131,12 @@ class MainActivity : AppCompatActivity() {
             .doAfterTerminate {progressBar.visibility = View.GONE}
             .subscribeBy(
                 onError = { e -> Log.wtf("Request failed", e) },
-                onNext ={joke : Joke -> jokes.add(joke)},
+                onNext ={joke : Joke -> jokes.add(joke)
+                    savedJokes.add(false)
+                },
                 onComplete = {
-                    viewAdapter.addJokes(jokes)
-                    jokes.clear()}
+                    viewAdapter.addJokes(jokes, savedJokes)
+                }
             )
         )
     }

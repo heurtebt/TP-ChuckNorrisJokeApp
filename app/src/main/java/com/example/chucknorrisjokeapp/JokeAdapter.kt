@@ -31,13 +31,16 @@ class JokeAdapter(
 
     override fun getItemCount() = jokes.size
 
-    fun addJokes(jokeInput : MutableList<Joke>,saved : Boolean = false){
+    fun addJokes(jokeInput : MutableList<Joke>,savedJokesInput : MutableList<Boolean>){
+        jokes.clear()
+        savedJokes.clear()
         jokes.addAll(jokeInput)
-        (0..itemCount).forEach { _ -> savedJokes.add(saved)}
+        savedJokes.addAll(savedJokesInput)
         notifyDataSetChanged()
     }
 
     fun getJokes() : MutableList<Joke> = jokes
+    fun getSaved() : MutableList<Boolean> = savedJokes
 
     fun onItemMoved(from : Int,to : Int){
         if(from>to){
@@ -56,6 +59,7 @@ class JokeAdapter(
 
     fun onJokeRemoved(i : Int){
         jokes.removeAt(i)
+        savedJokes.removeAt(i)
         this.notifyItemRemoved(i)
     }
 }
