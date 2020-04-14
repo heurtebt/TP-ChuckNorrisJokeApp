@@ -18,13 +18,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewAdapter: JokeAdapter
     private lateinit var viewManager: RecyclerView.LayoutManager
     private val compDisp: CompositeDisposable = CompositeDisposable()
+    private val jokes : MutableList<Joke> = mutableListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         viewManager = LinearLayoutManager(this)
-        viewAdapter = JokeAdapter()
+        viewAdapter = JokeAdapter{getAJoke()}
+
+        getAJoke()
 
         recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
             setHasFixedSize(true)
@@ -32,27 +35,23 @@ class MainActivity : AppCompatActivity() {
             layoutManager = viewManager
             adapter = viewAdapter
         }
+    }
 
-
+    private fun getAJoke() {
         val jokeService = JokeApiServiceFactory().createService()
         val jokeSingle : Single<Joke> = jokeService.giveMeAJoke()
-        fun getAJoke() {
-            compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .repeat(10)
-                .doOnSubscribe {progressBar.visibility = View.VISIBLE}
-                .doAfterTerminate {progressBar.visibility = View.GONE}
-                .subscribeBy(
-                    onError = { e -> Log.wtf("Request failed", e) },
-                    onNext = { joke: Joke ->
-                        viewAdapter.addJoke(joke)
-                    }
-                )
+        compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .repeat(10)
+            .doOnSubscribe {progressBar.visibility = View.VISIBLE}
+            .doAfterTerminate {progressBar.visibility = View.GONE}
+            .subscribeBy(
+                onError = { e -> Log.wtf("Request failed", e) },
+                onNext ={joke : Joke ->
+                    jokes.add(joke)},
+                onComplete = {viewAdapter.addJokes(jokes)}
             )
-        }
-        getAJoke()
-        val button : View = findViewById(R.id.button)
-        button.setOnClickListener{getAJoke()}
+        )
     }
 
     override fun onStop(){

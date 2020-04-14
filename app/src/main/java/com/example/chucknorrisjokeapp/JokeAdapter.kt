@@ -7,7 +7,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.joke_layout.view.*
 
-class JokeAdapter() :
+class JokeAdapter(private val onBottomReached : ()->Unit) :
 RecyclerView.Adapter<JokeAdapter.JokeViewHolder>() {
     private val jokes : MutableList<Joke> = mutableListOf<Joke>()
     class JokeViewHolder(val jokeView: LinearLayout) : RecyclerView.ViewHolder(jokeView)
@@ -18,15 +18,13 @@ RecyclerView.Adapter<JokeAdapter.JokeViewHolder>() {
     }
     override fun onBindViewHolder(holder: JokeViewHolder, position: Int) {
         holder.jokeView.textView.text = jokes[position].value
+        if(position== itemCount-1) onBottomReached()
     }
     override fun getItemCount() = jokes.size
 
-    fun addJoke(jokeInput : Joke){
-        jokes.add(jokeInput)
-        notifyDataSetChanged()
-    }
-    fun addJokes(jokesInput : MutableList<Joke>){
-        jokes.addAll(jokesInput)
+    fun addJokes(jokeInput : MutableList<Joke>){
+        jokes.clear()
+        jokes.addAll(jokeInput)
         notifyDataSetChanged()
     }
 }
