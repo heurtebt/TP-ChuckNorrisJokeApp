@@ -34,7 +34,10 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState != null) {
             savedInstanceState.getString("jokes")
                 ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
-                ?.let {jokes.addAll(it)}
+                ?.let {
+                    jokes.addAll(it)
+                    viewAdapter.addJokes(jokes)
+                }
         }else{getJokes()}
 
         recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
