@@ -12,4 +12,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/button"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:clickable="true"
+        app:layout_constraintBottom_toBottomOf="@+id/myRecyclerView"
+        app:layout_constraintEnd_toEndOf="@+id/myRecyclerView"
+        app:srcCompat="@android:drawable/stat_notify_sync"
+        app:backgroundTint="#F15A24"
+        android:focusable="true" />
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
