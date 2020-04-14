@@ -2,6 +2,7 @@ package com.example.chucknorrisjokeapp
 
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import java.util.*
 
 class JokeAdapter(
     private val onBottomReached : () -> Unit = {},
@@ -10,7 +11,6 @@ class JokeAdapter(
 ) :RecyclerView.Adapter<JokeAdapter.JokeViewHolder>()
 {
     private val jokes : MutableList<Joke> = mutableListOf<Joke>()
-
 
     class JokeViewHolder(val jokeView: JokeView) : RecyclerView.ViewHolder(jokeView)
 
@@ -31,8 +31,27 @@ class JokeAdapter(
     override fun getItemCount() = jokes.size
 
     fun addJokes(jokeInput : MutableList<Joke>){
-        jokes.clear()
         jokes.addAll(jokeInput)
         notifyDataSetChanged()
+    }
+
+    fun getJokes() : MutableList<Joke> = jokes
+
+    fun onItemMoved(from : Int,to : Int){
+        if(from<to){
+            (from..to).forEach{
+                Collections.swap(jokes,it,it+1)
+            }
+        }else{
+            (to..from).forEach{
+                Collections.swap(jokes,it,it+1)
+            }
+        }
+        this.notifyItemMoved(from,to)
+    }
+
+    fun onJokeRemoved(i : Int){
+        jokes.removeAt(i)
+        this.notifyItemRemoved(i)
     }
 }

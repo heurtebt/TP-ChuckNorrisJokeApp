@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.exmaple.chucknorrisjokeapp.JokeTouchHelper
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -50,8 +51,15 @@ class MainActivity : AppCompatActivity() {
                 ?.let {
                     jokes.addAll(it)
                     viewAdapter.addJokes(jokes)
+                    jokes.clear()
                 }
         }else{getJokes()}
+
+        val touchHelper = JokeTouchHelper(
+            {i -> viewAdapter.onJokeRemoved(i)},
+            {from,to->viewAdapter.onItemMoved(from,to)}
+        )
+        touchHelper.attachToRecyclerView(recyclerView)
     }
 
     override fun onStop(){
@@ -60,7 +68,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,jokes))
+        outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,viewAdapter.getJokes()))
         super.onSaveInstanceState(outState)
     }
 
@@ -83,7 +91,9 @@ class MainActivity : AppCompatActivity() {
                 onError = { e -> Log.wtf("Request failed", e) },
                 onNext ={joke : Joke ->
                     jokes.add(joke)},
-                onComplete = {viewAdapter.addJokes(jokes)}
+                onComplete = {
+                    viewAdapter.addJokes(jokes)
+                    jokes.clear()}
             )
         )
     }
