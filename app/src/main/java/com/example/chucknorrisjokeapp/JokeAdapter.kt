@@ -7,10 +7,11 @@ import java.util.Collections
 class JokeAdapter(
     private val onBottomReached : () -> Unit = {},
     private val onShareButtonClickListener : (value : String) -> Unit = {},
-    private val onSaveButtonClickListener : (id : String) -> Unit = {}
+    private val onSaveButtonClickListener : (joke : Joke,saved : Boolean) -> Unit = {_,_->}
 ) :RecyclerView.Adapter<JokeAdapter.JokeViewHolder>()
 {
-    private val jokes : MutableList<Joke> = mutableListOf<Joke>()
+    private val jokes : MutableList<Joke> = mutableListOf()
+    private val savedJokes : MutableList<Boolean> = mutableListOf()
 
     class JokeViewHolder(val jokeView: JokeView) : RecyclerView.ViewHolder(jokeView)
 
@@ -24,27 +25,30 @@ class JokeAdapter(
             JokeView.Model(jokes[position],
             onShareButtonClickListener,
             onSaveButtonClickListener,
-            false))
+            savedJokes[position]))
         if(position== itemCount-1) onBottomReached()
     }
 
     override fun getItemCount() = jokes.size
 
-    fun addJokes(jokeInput : MutableList<Joke>){
+    fun addJokes(jokeInput : MutableList<Joke>,saved : Boolean = false){
         jokes.addAll(jokeInput)
+        (0..itemCount).forEach { _ -> savedJokes.add(saved)}
         notifyDataSetChanged()
     }
 
     fun getJokes() : MutableList<Joke> = jokes
 
     fun onItemMoved(from : Int,to : Int){
-        if(from<to){
+        if(from>to){
             (from..to).forEach{
                 Collections.swap(jokes,it,it+1)
+                Collections.swap(savedJokes,it,it+1)
             }
         }else{
             (to..from).forEach{
                 Collections.swap(jokes,it,it+1)
+                Collections.swap(savedJokes,it,it+1)
             }
         }
         this.notifyItemMoved(from,to)

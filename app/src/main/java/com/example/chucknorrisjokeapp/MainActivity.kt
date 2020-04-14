@@ -1,5 +1,6 @@
 package com.example.chucknorrisjokeapp
 
+import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -26,7 +27,9 @@ class MainActivity : AppCompatActivity() {
 
     private val jokeService = JokeApiServiceFactory().createService()
     private val compDisp: CompositeDisposable = CompositeDisposable()
+
     private val jokes : MutableList<Joke> = mutableListOf()
+    private val savedJokes : MutableList<Joke> = mutableListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +39,7 @@ class MainActivity : AppCompatActivity() {
         viewAdapter = JokeAdapter(
             {getJokes()},
             {value->onShareButtonClick(value)},
-            {id->onSaveButtonClick(id)}
+            {joke,saved->onSaveButtonClick(joke,saved)}
         )
 
         recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
@@ -44,6 +47,17 @@ class MainActivity : AppCompatActivity() {
 
             layoutManager = viewManager
             adapter = viewAdapter
+        }
+
+        val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
+        if(sharedPreferences.contains("savedJokes")) {
+                sharedPreferences.getString("savedJokes","")
+                    ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
+                    ?.let {
+                        savedJokes.clear()
+                        savedJokes.addAll(it)
+                        viewAdapter.addJokes(savedJokes,true)
+                    }
         }
 
         if (savedInstanceState != null) {
@@ -83,8 +97,15 @@ class MainActivity : AppCompatActivity() {
         startActivity(shareIntent)
     }
 
-    private fun onSaveButtonClick(id:String){
-        Log.wtf("save",id)
+    private fun onSaveButtonClick(joke:Joke,saved : Boolean){
+        val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
+        if(saved) savedJokes.add(joke)
+        else savedJokes.remove(joke)
+        sharedPreferences.edit()
+            .putString("savedJokes",
+                Json(JsonConfiguration.Stable)
+                    .stringify(Joke.serializer().list,savedJokes))
+            .apply()
     }
 
     private fun getJokes() {
@@ -96,8 +117,7 @@ class MainActivity : AppCompatActivity() {
             .doAfterTerminate {progressBar.visibility = View.GONE}
             .subscribeBy(
                 onError = { e -> Log.wtf("Request failed", e) },
-                onNext ={joke : Joke ->
-                    jokes.add(joke)},
+                onNext ={joke : Joke -> jokes.add(joke)},
                 onComplete = {
                     viewAdapter.addJokes(jokes)
                     jokes.clear()}
