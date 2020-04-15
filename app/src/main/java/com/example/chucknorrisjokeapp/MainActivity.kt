@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
     private fun onSaveButtonClick(joke:Joke,saved : Boolean){
         reload()
         val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
-        savedJokes[jokes.indexOf(joke)]=saved
+        savedJokes[jokes.indexOf(joke)]=!saved
         sharedPreferences.edit()
             .putString("savedJokes",
                 Json(JsonConfiguration.Stable)
