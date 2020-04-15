@@ -22,12 +22,12 @@ class JokeView @JvmOverloads constructor (context : Context,
     fun setupView(model: Model){
         jokeValue.text = model.joke.value
         save.setImageResource(if(model.saved) R.drawable.ic_star_primary_dark_24dp else R.drawable.ic_star_border_primary_24dp)
-        share.setOnClickListener { model.onShareButtonClickListener(model.joke.value) }
-        save.setOnClickListener { model.onSaveButtonClickListener(model) }
+        share.setOnClickListener { model.onShareButtonClickListener(model.joke.id) }
+        save.setOnClickListener { model.onSaveButtonClickListener(model.saved) }
     }
 
     data class Model(val joke : Joke,
-                     val onShareButtonClickListener: (value:String)->Unit={},
-                     val onSaveButtonClickListener: (model:Model)->Unit={},
+                     val onShareButtonClickListener: (id:String)->Unit={},
+                     val onSaveButtonClickListener: (saved:Boolean)->Unit={},
                      val saved : Boolean)
 }
