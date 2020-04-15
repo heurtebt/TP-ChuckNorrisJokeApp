@@ -23,11 +23,11 @@ class JokeView @JvmOverloads constructor (context : Context,
         jokeValue.text = model.joke.value
         save.setImageResource(if(model.saved) R.drawable.ic_star_primary_dark_24dp else R.drawable.ic_star_border_primary_24dp)
         share.setOnClickListener { model.onShareButtonClickListener(model.joke.value) }
-        save.setOnClickListener { model.onSaveButtonClickListener(model.joke,model.saved) }
+        save.setOnClickListener { model.onSaveButtonClickListener(model) }
     }
 
     data class Model(val joke : Joke,
                      val onShareButtonClickListener: (value:String)->Unit={},
-                     val onSaveButtonClickListener: (joke:Joke,saved:Boolean)->Unit={_,_->},
+                     val onSaveButtonClickListener: (model:Model)->Unit={},
                      val saved : Boolean)
 }
