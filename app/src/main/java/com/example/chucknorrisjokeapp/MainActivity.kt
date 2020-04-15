@@ -16,6 +16,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import kotlinx.serialization.list
+import java.util.Collections
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,8 +27,7 @@ class MainActivity : AppCompatActivity() {
     private val jokeService = JokeApiServiceFactory().createService()
     private val compDisp: CompositeDisposable = CompositeDisposable()
 
-    private val jokes : MutableList<Joke> = mutableListOf()
-    private val savedJokes : MutableList<Boolean> = mutableListOf()
+    private val models : MutableList<JokeView.Model> = mutableListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,11 +36,7 @@ class MainActivity : AppCompatActivity() {
         swipe.setSize(0)
 
         viewManager = LinearLayoutManager(this)
-        viewAdapter = JokeAdapter(
-            {getJokes()},
-            {value->onShareButtonClick(value)},
-            {joke,saved->onSaveButtonClick(joke,saved)}
-        )
+        viewAdapter = JokeAdapter{getJokes()}
 
         recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
             setHasFixedSize(true)
@@ -53,30 +49,40 @@ class MainActivity : AppCompatActivity() {
         if(sharedPreferences.contains("savedJokes")) {
             sharedPreferences.getString("savedJokes","")
                 ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
-                ?.let {
-                    jokes.addAll(it)
-                    it.forEach { _ -> savedJokes.add(true) }
-                    viewAdapter.addJokes(jokes,savedJokes)
+                ?.let {it->
+                    models.addAll(it.map {
+                        JokeView.Model(
+                            it,
+                            {value -> onShareButtonClick(value)},
+                            {model -> onSaveButtonClick(model)},
+                            true)
+                    })
+                    viewAdapter.updateData(models)
                 }
         }
 
         if (savedInstanceState != null) {
             savedInstanceState.getString("jokes")
                 ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
-                ?.let {
-                    jokes.addAll(it)
-                    it.forEach{_->savedJokes.add(false)}
-                    viewAdapter.addJokes(jokes,savedJokes)
+                ?.let {it->
+                    models.addAll(it.map {
+                        JokeView.Model(
+                            it,
+                            {value -> onShareButtonClick(value)},
+                            {model -> onSaveButtonClick(model)},
+                            false)
+                    })
+                    viewAdapter.updateData(models)
                 }
         }else{getJokes()}
 
         val touchHelper = JokeTouchHelper(
-            {i -> viewAdapter.onJokeRemoved(i)},
-            {from,to->viewAdapter.onItemMoved(from,to)}
+            {i -> onJokeRemoved(i)},
+            {from,to-> onItemMoved(from,to)}
         )
         touchHelper.attachToRecyclerView(recyclerView)
 
-        swipe.setOnRefreshListener { getJokes(false) }
+        swipe.setOnRefreshListener { getJokes(true) }
     }
 
     override fun onStop(){
@@ -85,44 +91,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        reload()
         outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,
-            jokes.filterIndexed { index, _ -> !savedJokes[index] }))
+            models.filter{!it.saved }.map{it.joke}))
         super.onSaveInstanceState(outState)
     }
 
     private fun onShareButtonClick(value:String){
         val sendIntent: Intent = Intent().apply {
             action = Intent.ACTION_SEND
-            putExtra(Intent.EXTRA_TEXT, "Look at this joke ! : "+value)
+            putExtra(Intent.EXTRA_TEXT, "Look at this joke ! : $value")
             type = "text/plain"
         }
         val shareIntent = Intent.createChooser(sendIntent, null)
         startActivity(shareIntent)
     }
 
-    private fun onSaveButtonClick(joke:Joke,saved : Boolean){
-        reload()
+    private fun onSaveButtonClick(model:JokeView.Model){
         val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
-        savedJokes[jokes.indexOf(joke)]=!saved
-        sharedPreferences.edit()
-            .putString("savedJokes",
-                Json(JsonConfiguration.Stable)
-                    .stringify(Joke.serializer().list,
-                        jokes.filterIndexed { index, _ -> savedJokes[index] }))
-            .apply()
-        viewAdapter.addJokes(jokes,savedJokes)
+        models[models.indexOf(model)] = model.copy(saved=!model.saved)
+        sharedPreferences.edit().putString(
+            "savedJokes",
+            Json(JsonConfiguration.Stable).stringify(
+                Joke.serializer().list,
+                models.filter{ it.saved }.map{it.joke}
+            )
+        ).apply()
+        viewAdapter.updateData(models)
     }
 
-    private fun getJokes(reloading : Boolean = true) {
-        reload()
-        if(!reloading){
-            val jokesSaved : MutableList<Joke>
-            jokesSaved= jokes.filterIndexed{ index, _ -> savedJokes[index]} as MutableList<Joke>
-            jokes.clear()
-            jokes.addAll(jokesSaved)
-            savedJokes.clear()
-            jokes.forEach { _ -> savedJokes.add(true) }
+    private fun getJokes(reloading : Boolean = false) {
+        if(reloading){
+            val modelsSaved : MutableList<JokeView.Model> =
+                models.filter{it.saved} as MutableList<JokeView.Model>
+            models.clear()
+            models.addAll(modelsSaved)
         }
         val jokeSingle : Single<Joke> = jokeService.giveMeAJoke()
         compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
@@ -132,20 +134,38 @@ class MainActivity : AppCompatActivity() {
             .doAfterTerminate {swipe.isRefreshing = false}
             .subscribeBy(
                 onError = { e -> Log.wtf("Request failed", e) },
-                onNext ={joke : Joke -> jokes.add(joke)
-                    savedJokes.add(false)
-                },
+                onNext ={joke : Joke -> models.add(
+                    JokeView.Model(
+                        joke,
+                        {value -> onShareButtonClick(value)},
+                        {model -> onSaveButtonClick(model)},
+                        false
+                    )
+                )},
                 onComplete = {
-                    viewAdapter.addJokes(jokes, savedJokes)
+                    viewAdapter.updateData(models)
                 }
             )
         )
     }
 
-    private fun reload(){
-        jokes.clear()
-        jokes.addAll(viewAdapter.getJokes())
-        savedJokes.clear()
-        savedJokes.addAll(viewAdapter.getSaved())
+    private fun onItemMoved(from : Int,to : Int){
+        if(from>to){
+            (from..to).forEach{
+                Collections.swap(models,it,it+1)
+            }
+        }else{
+            (to..from).forEach{
+                Collections.swap(models,it,it+1)
+            }
+        }
+        viewAdapter.updateData(models)
+        viewAdapter.notifyItemMoved(from,to)
+    }
+
+    private fun onJokeRemoved(i : Int){
+        models.removeAt(i)
+        viewAdapter.updateData(models)
+        viewAdapter.notifyItemRemoved(i)
     }
 }
