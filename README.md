@@ -17,7 +17,6 @@ Il s'agit de la première partie du projet de l'unité. Le but est de faire une 
 	- à gérer des structures de données JSON grâce à la bibliothèque **Kotlinx Serialization**;
 	- à faire appel à une API web avec la bibliothèque **Retrofit**;
 	- à exécuter du code de manière asynchrone avec la bibliothèque **ReactiveX**.
-	- 
 	
 - #### Make UI great again
 
