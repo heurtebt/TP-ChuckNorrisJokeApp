@@ -6,7 +6,9 @@ import android.view.LayoutInflater
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import androidx.constraintlayout.widget.ConstraintLayout
-import kotlinx.android.synthetic.main.joke_layout.view.*
+import kotlinx.android.synthetic.main.joke_layout.view.save
+import kotlinx.android.synthetic.main.joke_layout.view.share
+import kotlinx.android.synthetic.main.joke_layout.view.jokeValue
 
 class JokeView @JvmOverloads constructor (context : Context,
                                           attrs : AttributeSet? = null)
@@ -19,21 +21,13 @@ class JokeView @JvmOverloads constructor (context : Context,
 
     fun setupView(model: Model){
         jokeValue.text = model.joke.value
-        save(model.saved)
-        share.setOnClickListener { model.onShareButtonClickListener(model.joke.value) }
-        save.setOnClickListener {
-            model.onSaveButtonClickListener(model.joke,!model.saved)
-            setupView(model.copy(saved=!model.saved))
-        }
-    }
-
-    private fun save(saved : Boolean){
-        if(saved) save.setImageResource(R.drawable.ic_star_primary_dark_24dp)
-        else save.setImageResource(R.drawable.ic_star_border_primary_24dp)
+        save.setImageResource(if(model.saved) R.drawable.ic_star_primary_dark_24dp else R.drawable.ic_star_border_primary_24dp)
+        share.setOnClickListener { model.onShareButtonClickListener(model.joke.id) }
+        save.setOnClickListener { model.onSaveButtonClickListener(model.saved) }
     }
 
     data class Model(val joke : Joke,
-                     val onShareButtonClickListener: (value:String)->Unit={},
-                     val onSaveButtonClickListener: (joke:Joke,saved:Boolean)->Unit={_,_->},
+                     val onShareButtonClickListener: (id:String)->Unit={},
+                     val onSaveButtonClickListener: (saved:Boolean)->Unit={},
                      val saved : Boolean)
 }

@@ -1,151 +1,103 @@
 package com.example.chucknorrisjokeapp
-
 import android.content.Context
-import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
+import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.subscribeBy
-import io.reactivex.schedulers.Schedulers
+import com.example.chucknorrisjokeapp.JokesViewModel.LoadingStatus
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
-import kotlinx.serialization.list
+
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var viewAdapter: JokeAdapter
-    private lateinit var viewManager: RecyclerView.LayoutManager
+    /**
+     * Our ViewModel instance, built with our Factory
+     *
+     * @see androidx.activity.viewModels
+     */
 
-    private val jokeService = JokeApiServiceFactory().createService()
-    private val compDisp: CompositeDisposable = CompositeDisposable()
+    private val viewModel: JokesViewModel by viewModels {
+        JokesViewModelFactory(
+            this,
+            getSharedPreferences("savedJokes",Context.MODE_PRIVATE))
+    }
 
-    private val jokes : MutableList<Joke> = mutableListOf()
-    private val savedJokes : MutableList<Boolean> = mutableListOf()
+    private val jokeAdapter: JokeAdapter = JokeAdapter{viewModel.onNewJokesRequest()}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         swipe.setColorSchemeColors(getColor(R.color.colorAccent))
         swipe.setSize(0)
 
-        viewManager = LinearLayoutManager(this)
-        viewAdapter = JokeAdapter(
-            {getJokes()},
-            {value->onShareButtonClick(value)},
-            {joke,saved->onSaveButtonClick(joke,saved)}
-        )
+        val viewManager : RecyclerView.LayoutManager = LinearLayoutManager(this)
 
-        recyclerView = findViewById<RecyclerView>(R.id.myRecyclerView).apply {
+        val recyclerView : RecyclerView= findViewById<RecyclerView>(R.id.myRecyclerView).apply {
             setHasFixedSize(true)
-
             layoutManager = viewManager
-            adapter = viewAdapter
+            adapter = jokeAdapter
         }
-
-        val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
-        if(sharedPreferences.contains("savedJokes")) {
-            sharedPreferences.getString("savedJokes","")
-                ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
-                ?.let {
-                    jokes.addAll(it)
-                    it.forEach { _ -> savedJokes.add(true) }
-                    viewAdapter.addJokes(jokes,savedJokes)
-                }
-        }
-
-        if (savedInstanceState != null) {
-            savedInstanceState.getString("jokes")
-                ?.let{Json(JsonConfiguration.Stable).parse(Joke.serializer().list,it)}
-                ?.let {
-                    jokes.addAll(it)
-                    it.forEach{_->savedJokes.add(false)}
-                    viewAdapter.addJokes(jokes,savedJokes)
-                }
-        }else{getJokes()}
 
         val touchHelper = JokeTouchHelper(
-            {i -> viewAdapter.onJokeRemoved(i)},
-            {from,to->viewAdapter.onItemMoved(from,to)}
+            {i -> viewModel.onJokeRemovedAt(i)},
+            {from,to-> viewModel.onJokePositionChanged(from,to)}
         )
         touchHelper.attachToRecyclerView(recyclerView)
-
-        swipe.setOnRefreshListener { getJokes(false) }
+        swipe.setOnRefreshListener { viewModel.onNewJokesRequest(reload = true) }
+        observeViewModel()
     }
 
-    override fun onStop(){
-        super.onStop()
-        compDisp.clear()
-    }
+    private fun observeViewModel() {
+        viewModel.jokeModels.observe(
+            this,
+            Observer { jokes: List<JokeView.Model> ->
+                jokeAdapter.updateData(jokes)
+            })
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        reload()
-        outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,
-            jokes.filterIndexed { index, _ -> !savedJokes[index] }))
-        super.onSaveInstanceState(outState)
-    }
-
-    private fun onShareButtonClick(value:String){
-        val sendIntent: Intent = Intent().apply {
-            action = Intent.ACTION_SEND
-            putExtra(Intent.EXTRA_TEXT, "Look at this joke ! : "+value)
-            type = "text/plain"
-        }
-        val shareIntent = Intent.createChooser(sendIntent, null)
-        startActivity(shareIntent)
-    }
-
-    private fun onSaveButtonClick(joke:Joke,saved : Boolean){
-        reload()
-        val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
-        savedJokes[jokes.indexOf(joke)]=saved
-        sharedPreferences.edit()
-            .putString("savedJokes",
-                Json(JsonConfiguration.Stable)
-                    .stringify(Joke.serializer().list,
-                        jokes.filterIndexed { index, _ -> savedJokes[index] }))
-            .apply()
-        viewAdapter.addJokes(jokes,savedJokes)
-    }
-
-    private fun getJokes(reloading : Boolean = true) {
-        reload()
-        if(!reloading){
-            val jokesSaved : MutableList<Joke>
-            jokesSaved= jokes.filterIndexed{ index, _ -> savedJokes[index]} as MutableList<Joke>
-            jokes.clear()
-            jokes.addAll(jokesSaved)
-            savedJokes.clear()
-            jokes.forEach { _ -> savedJokes.add(true) }
-        }
-        val jokeSingle : Single<Joke> = jokeService.giveMeAJoke()
-        compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .repeat(10)
-            .doOnSubscribe {swipe.isRefreshing = true}
-            .doAfterTerminate {swipe.isRefreshing = false}
-            .subscribeBy(
-                onError = { e -> Log.wtf("Request failed", e) },
-                onNext ={joke : Joke -> jokes.add(joke)
-                    savedJokes.add(false)
-                },
-                onComplete = {
-                    viewAdapter.addJokes(jokes, savedJokes)
+        viewModel.jokesSetChangedAction.observe(
+            this,
+            Observer { listAction: JokesViewModel.ListAction ->
+                when(listAction){
+                    is JokesViewModel.ListAction.ItemUpdatedAction ->
+                        jokeAdapter.notifyItemChanged(listAction.position)
+                    is JokesViewModel.ListAction.ItemInsertedAction ->
+                        jokeAdapter.notifyItemInserted(listAction.position)
+                    is JokesViewModel.ListAction.ItemRemovedAction ->
+                        jokeAdapter.notifyItemRemoved(listAction.position)
+                    is JokesViewModel.ListAction.ItemMovedAction ->
+                        jokeAdapter.notifyItemMoved(listAction.fromPosition,listAction.toPosition)
+                    is JokesViewModel.ListAction.DataSetChangedAction ->
+                        jokeAdapter.notifyDataSetChanged()
                 }
-            )
-        )
+            })
+
+        viewModel.jokesLoadingStatus.observe(
+            this,
+            Observer { loadingStatus: LoadingStatus ->
+                swipe.isRefreshing = loadingStatus==LoadingStatus.LOADING
+            })
     }
 
-    private fun reload(){
-        jokes.clear()
-        jokes.addAll(viewAdapter.getJokes())
-        savedJokes.clear()
-        savedJokes.addAll(viewAdapter.getSaved())
+
+    /**
+     * Convenient class used to build the instance of our JokeViewModel,
+     * passing some params to its constructor.
+     *
+     * @see androidx.lifecycle.ViewModelProvider
+     */
+    private class JokesViewModelFactory(
+        private val context: Context,
+        private val sharedPrefs: SharedPreferences
+    ) : ViewModelProvider.NewInstanceFactory() {
+        override fun <T : ViewModel?> create(modelClass: Class<T>): T =
+            JokesViewModel(context, sharedPrefs) as T
     }
+
 }
+
