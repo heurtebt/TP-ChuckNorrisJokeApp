@@ -22,9 +22,8 @@ class JokeAdapter(private val onBottomReached : () -> Unit = {})
 
     override fun getItemCount() = models.size
 
-    fun updateData(modelsInput : MutableList<JokeView.Model>){
+    fun updateData(modelsInput : List<JokeView.Model>){
         models.clear()
         models.addAll(modelsInput)
-        notifyDataSetChanged()
     }
 }
