@@ -1,4 +1,4 @@
-package com.exmaple.chucknorrisjokeapp
+package com.example.chucknorrisjokeapp
 
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView

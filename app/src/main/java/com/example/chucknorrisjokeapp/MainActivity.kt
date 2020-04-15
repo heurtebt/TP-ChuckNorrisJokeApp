@@ -5,16 +5,14 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.exmaple.chucknorrisjokeapp.JokeTouchHelper
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
-import kotlinx.android.synthetic.main.activity_main.progressBar
+import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import kotlinx.serialization.list
@@ -34,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        swipe.setColorSchemeColors(getColor(R.color.colorAccent))
+        swipe.setSize(0)
 
         viewManager = LinearLayoutManager(this)
         viewAdapter = JokeAdapter(
@@ -75,6 +75,8 @@ class MainActivity : AppCompatActivity() {
             {from,to->viewAdapter.onItemMoved(from,to)}
         )
         touchHelper.attachToRecyclerView(recyclerView)
+
+        swipe.setOnRefreshListener { getJokes(false) }
     }
 
     override fun onStop(){
@@ -83,10 +85,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        jokes.clear()
-        jokes.addAll(viewAdapter.getJokes())
-        savedJokes.clear()
-        savedJokes.addAll(viewAdapter.getSaved())
+        reload()
         outState.putString("jokes",Json(JsonConfiguration.Stable).stringify(Joke.serializer().list,
             jokes.filterIndexed { index, _ -> !savedJokes[index] }))
         super.onSaveInstanceState(outState)
@@ -103,10 +102,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onSaveButtonClick(joke:Joke,saved : Boolean){
-        jokes.clear()
-        jokes.addAll(viewAdapter.getJokes())
-        savedJokes.clear()
-        savedJokes.addAll(viewAdapter.getSaved())
+        reload()
         val sharedPreferences = getSharedPreferences("savedJokes",Context.MODE_PRIVATE)
         savedJokes[jokes.indexOf(joke)]=saved
         sharedPreferences.edit()
@@ -118,17 +114,22 @@ class MainActivity : AppCompatActivity() {
         viewAdapter.addJokes(jokes,savedJokes)
     }
 
-    private fun getJokes() {
-        jokes.clear()
-        jokes.addAll(viewAdapter.getJokes())
-        savedJokes.clear()
-        savedJokes.addAll(viewAdapter.getSaved())
+    private fun getJokes(reloading : Boolean = true) {
+        reload()
+        if(!reloading){
+            val jokesSaved : MutableList<Joke>
+            jokesSaved= jokes.filterIndexed{ index, _ -> savedJokes[index]} as MutableList<Joke>
+            jokes.clear()
+            jokes.addAll(jokesSaved)
+            savedJokes.clear()
+            jokes.forEach { _ -> savedJokes.add(true) }
+        }
         val jokeSingle : Single<Joke> = jokeService.giveMeAJoke()
         compDisp.add(jokeSingle.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .repeat(10)
-            .doOnSubscribe {progressBar.visibility = View.VISIBLE}
-            .doAfterTerminate {progressBar.visibility = View.GONE}
+            .doOnSubscribe {swipe.isRefreshing = true}
+            .doAfterTerminate {swipe.isRefreshing = false}
             .subscribeBy(
                 onError = { e -> Log.wtf("Request failed", e) },
                 onNext ={joke : Joke -> jokes.add(joke)
@@ -139,5 +140,12 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         )
+    }
+
+    private fun reload(){
+        jokes.clear()
+        jokes.addAll(viewAdapter.getJokes())
+        savedJokes.clear()
+        savedJokes.addAll(viewAdapter.getSaved())
     }
 }
