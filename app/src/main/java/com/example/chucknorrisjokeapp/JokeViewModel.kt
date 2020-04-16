@@ -83,21 +83,18 @@ class JokesViewModel(
             _jokes.value=listOf()
             onSavedJokesRestored()
         }
-        val jokes : MutableList<Joke> = mutableListOf()
-        _jokes.value?.let{jokes.addAll(it)}
 
         val jokeSingle : Single<Joke> = service.giveMeAJoke()
         composite.add(jokeSingle.subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .repeat(jokeCount.toLong())
             .doOnSubscribe {_jokesLoadingStatus.value = LoadingStatus.LOADING}
-            .doAfterTerminate {_jokesLoadingStatus.value = LoadingStatus.NOT_LOADING}
+            .doFinally {_jokesLoadingStatus.value = LoadingStatus.NOT_LOADING}
             .subscribeBy(
                 onError = { e -> Log.wtf("Request failed", e) },
-                onNext ={joke : Joke -> jokes.add(joke)},
-                onComplete = {
-                    _jokes.value = jokes
-                    _jokesSetChangedAction.value = ListAction.DataSetChangedAction
+                onNext ={joke : Joke ->
+                    _jokes.value=_jokes.value?.plus(joke)
+                    _jokesSetChangedAction.value = ListAction.ItemInsertedAction(_jokes.value?.lastIndex!!)
                 }
             )
         )
