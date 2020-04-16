@@ -38,8 +38,8 @@ Il s'agit de la seconde partie du projet. Le but ici est d'avoir nos classes pro
 - ### MVVM
 
 	Le but de cette dernière partie a été d'apprendre :
-		- à utiliser et créer un **ViewModel** pour gérer le cycle de vie d'une activité;
-		- à utiliser un data holder **LiveData** pour ne plus avoir à gérer *manuellement* les données par rapport au cycle de vie d'une activité.
+	- à utiliser et créer un **ViewModel** pour gérer le cycle de vie d'une activité;
+	- à utiliser un data holder **LiveData** pour ne plus avoir à gérer *manuellement* les données par rapport au cycle de vie d'une activité.
 
 ---
 ## Demonstration
